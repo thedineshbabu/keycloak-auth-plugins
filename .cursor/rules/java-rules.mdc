@@ -1,0 +1,156 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+
+# Cursor Rule File for Keycloak Plugin Development in Java
+
+## Expertise Context
+You are an expert in Java (17+), Keycloak SPI development, Quarkus, Jakarta EE, Maven, JUnit 5, GraalVM, and secure plugin development. You specialize in creating Keycloak authenticators, mappers, and custom providers.
+
+---
+
+## Code Style and Structure
+
+- Write concise, modular, and readable Java code adhering to SOLID principles.
+- Use camelCase for method/variable names and PascalCase for class names.
+- Avoid deep inheritance. Prefer composition and interfaces.
+- Organize code into logical packages: `authenticators`, `mappers`, `providers`, `utils`, and `config`.
+- JavaDoc all public classes and methods with meaningful descriptions.
+
+---
+
+## Keycloak Plugin Architecture
+
+- Follow Keycloak SPI guidelines for implementing custom authenticators or mappers.
+- Extend `BaseAuthenticator`, `AbstractIdMapper`, or `AbstractUserStorageProvider` as appropriate.
+- Implement interfaces like `Authenticator`, `AuthenticatorFactory`, `ProtocolMapper`, `UserStorageProvider`.
+- Use `@AutoService` to register `*Factory` classes.
+
+---
+
+## Naming Conventions
+
+- Class names: PascalCase (e.g., `EmailOtpAuthenticator`)
+- Method names: camelCase (e.g., `validateOtpCode`)
+- Constants: ALL_CAPS_WITH_UNDERSCORES (e.g., `OTP_TTL_SECONDS`)
+- SPI registration files: `META-INF/services/org.keycloak.*` as required.
+
+---
+
+## Configuration & Property Management
+
+- Read plugin config via `AuthenticatorConfigModel.getConfig()`.
+- Provide default values and null checks for all properties.
+- Use Keycloak environment variables or system properties for secrets or tokens (never hardcode).
+
+---
+
+## Dependency Injection
+
+- Use Keycloak’s `KeycloakSession`, `RealmModel`, `UserModel` injection patterns.
+- Avoid static singletons – prefer per-session objects.
+- When using Quarkus extensions, prefer constructor injection.
+
+---
+
+## Keycloak SPI-Specific Best Practices
+
+- Always implement `close()` and manage session lifecycle correctly.
+- Use `KeycloakModelUtils.getRealmModelByName()` safely with null checks.
+- Avoid modifying persistent session state outside transactional boundaries.
+- Prefer caching where possible: use `InfinispanCacheProvider` or `KeycloakSession.getProvider(CacheProvider.class)`.
+
+---
+
+## Security Practices
+
+- Never log sensitive values like OTPs, tokens, passwords.
+- Sanitize all user inputs before logging or using them.
+- Implement brute force protection where applicable, using rate limiting based on IP + username.
+- Always validate redirect URLs and external API response authenticity.
+
+---
+
+## Testing Practices
+
+### Unit Testing
+
+- Use `JUnit 5` with `Mockito` or `EasyMock`.
+- Mock `KeycloakSession`, `RealmModel`, `AuthenticationFlowContext`, `UserModel`.
+- Verify authentication flow paths (success, failure, retry).
+- Use test constants and utility methods to generate test objects.
+
+### Integration Testing
+
+- Use Keycloak Testcontainers with real Keycloak instances.
+- Test plugin deployment in real Keycloak runtime with `keycloak-config-cli` or import scripts.
+- Automate test setup using Quarkus Test Profiles or Maven profiles.
+
+---
+
+## Performance
+
+- Avoid expensive operations (e.g., database calls) inside the `authenticate()` method unless required.
+- Cache OTP verification metadata when possible.
+- Monitor for memory leaks in `close()` or `postAuthenticate()` implementations.
+
+---
+
+## Plugin Deployment
+
+- Package plugin as a fat JAR with correct dependencies and `META-INF` service entries.
+- Mount plugin in `/opt/keycloak/providers/` or use an init container.
+- Use `quay.io/keycloak/keycloak` as base image if Dockerizing.
+- Test native image compatibility (if targeting GraalVM).
+
+---
+
+## Logging and Observability
+
+- Use `org.jboss.logging.Logger` for all log output.
+- Provide `Logger.getLogger(getClass())` for scoped logging.
+- Log context-specific info (realm, username) without exposing sensitive data.
+- Log failures and unexpected behavior with `logger.error(...)` and stack traces.
+
+---
+
+## CI/CD and Versioning
+
+- Use Maven with appropriate `groupId` (e.g., `com.kornferry.keycloak.plugins`) and semantic versioning.
+- Use GitHub Actions or Jenkins pipelines for build/test/package.
+- Maintain a changelog with security and breaking change notes.
+
+---
+
+## Error Handling
+
+- Return meaningful error messages in `context.form().setError(...)`.
+- Always use `Response.status(...)` properly to reflect HTTP error semantics.
+- Catch and handle all unchecked exceptions. Use fallback logic if needed.
+
+---
+
+## Keycloak-Specific Examples
+
+### Example Authenticator Class Skeleton
+```java
+public class EmailOtpAuthenticator implements Authenticator {
+    private static final Logger logger = Logger.getLogger(EmailOtpAuthenticator.class);
+
+    @Override
+    public void authenticate(AuthenticationFlowContext context) {
+        // Example: Validate email + OTP from form
+    }
+
+    @Override
+    public void action(AuthenticationFlowContext context) {
+        // Handle user action (e.g., OTP submission)
+    }
+
+    @Override
+    public void close() {
+        // Cleanup if needed
+    }
+}
