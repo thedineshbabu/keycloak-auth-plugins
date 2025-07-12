@@ -39,7 +39,7 @@ src/main/java/kf/keycloak/plugin/
 
 ### Generate Magiclink
 ```
-POST /auth/realms/{realm}/magiclink/generate
+POST /realms/{realm}/magiclink/generate
 Content-Type: application/json
 
 {
@@ -52,28 +52,28 @@ Content-Type: application/json
 
 ### Authenticate with Magiclink
 ```
-GET /auth/realms/{realm}/magiclink/authenticate?token={jwt_token}
+GET /realms/{realm}/magiclink/authenticate?token={jwt_token}
 ```
 
 ### Check Token Status
 ```
-GET /auth/realms/{realm}/magiclink/status?token={jwt_token}
+GET /realms/{realm}/magiclink/status?token={jwt_token}
 ```
 
 ### Configuration Management
 ```
-GET /auth/realms/{realm}/magiclink/config
-PUT /auth/realms/{realm}/magiclink/config
+GET /realms/{realm}/magiclink/config
+PUT /realms/{realm}/magiclink/config
 ```
 
 ### Test External API
 ```
-GET /auth/realms/{realm}/magiclink/test-api
+GET /realms/{realm}/magiclink/test-api
 ```
 
 ### Health Check
 ```
-GET /auth/realms/{realm}/magiclink/health
+GET /realms/{realm}/magiclink/health
 ```
 
 ## Configuration
@@ -136,7 +136,7 @@ docker-compose restart keycloak
 
 ```bash
 curl -X POST \
-  http://localhost:8080/auth/realms/myrealm/magiclink/generate \
+  http://localhost:8080/realms/myrealm/magiclink/generate \
   -H 'Content-Type: application/json' \
   -d '{
     "email": "user@example.com",
@@ -149,14 +149,14 @@ curl -X POST \
 
 ```bash
 curl -X GET \
-  'http://localhost:8080/auth/realms/myrealm/magiclink/authenticate?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+  'http://localhost:8080/realms/myrealm/magiclink/authenticate?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
 ```
 
 ### Check Health
 
 ```bash
 curl -X GET \
-  http://localhost:8080/auth/realms/myrealm/magiclink/health
+  http://localhost:8080/realms/myrealm/magiclink/health
 ```
 
 ## External API Integration
@@ -176,7 +176,7 @@ The plugin will POST the following payload to your external API:
 ```json
 {
   "email": "user@example.com",
-  "magiclink": "https://keycloak.example.com/auth/realms/myrealm/magiclink/authenticate?token=...",
+  "magiclink": "https://keycloak.example.com/realms/myrealm/magiclink/authenticate?token=...",
   "tokenId": "unique-token-id",
   "userId": "keycloak-user-id",
   "timestamp": "2024-01-01T12:00:00Z",
@@ -255,7 +255,7 @@ mvn package
 ```bash
 # Enable magiclink
 curl -X PUT \
-  http://localhost:8080/auth/realms/myrealm/magiclink/config \
+  http://localhost:8080/realms/myrealm/magiclink/config \
   -H 'Content-Type: application/json' \
   -d '{
     "enabled": "true",
@@ -270,7 +270,7 @@ curl -X PUT \
 
 ```bash
 curl -X PUT \
-  http://localhost:8080/auth/realms/myrealm/magiclink/config \
+  http://localhost:8080/realms/myrealm/magiclink/config \
   -H 'Content-Type: application/json' \
   -d '{
     "externalApiEndpoint": "https://api.example.com/send-magiclink",
