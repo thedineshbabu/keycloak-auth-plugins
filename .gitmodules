@@ -1,0 +1,3 @@
+[submodule "magiclink-test-app"]
+	path = magiclink-test-app
+	url = ./magiclink-test-app
