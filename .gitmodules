@@ -1,3 +1,3 @@
 [submodule "magiclink-test-app"]
 	path = magiclink-test-app
-	url = ./magiclink-test-app
+	url = https://github.com/thedineshbabu/magiclink-test-app.git
