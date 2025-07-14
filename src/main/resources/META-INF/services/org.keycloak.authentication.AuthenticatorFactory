@@ -1,1 +1,3 @@
 kf.keycloak.plugin.provider.MagiclinkAuthenticatorFactory
+kf.keycloak.plugin.provider.OtpAuthenticatorFactory
+kf.keycloak.plugin.provider.EnvVarsAuthenticatorFactory

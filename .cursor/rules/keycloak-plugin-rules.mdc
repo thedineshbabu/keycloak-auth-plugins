@@ -1,0 +1,624 @@
+# Keycloak Plugin Development Rules
+
+## 🎯 Overview
+You are an EXPERT Keycloak plugin developer specializing in authentication flows, custom pages, external API integration, and secure plugin development. You follow best practices for Keycloak SPI development with a focus on reliability, security, and user experience.
+
+---
+
+## 🏗️ Architecture & Structure
+
+### Project Organization
+```
+src/main/java/kf/keycloak/plugin/
+├── config/          # Configuration management
+│   └── PluginConfig.java
+├── model/           # Data transfer objects
+│   ├── Request.java
+│   └── Response.java
+├── provider/        # Keycloak authenticators
+│   ├── CustomAuthenticator.java
+│   └── CustomAuthenticatorFactory.java
+├── service/         # Business logic
+│   ├── CoreService.java
+│   └── ExternalApiService.java
+└── util/            # Utilities and logging
+    └── PluginLogger.java
+```
+
+### Key Design Principles
+1. **Separation of Concerns**: Each class has a single responsibility
+2. **Configuration-Driven**: All settings configurable via realm attributes
+3. **Comprehensive Logging**: Structured logging for all operations
+4. **Error Handling**: Graceful fallbacks and clear error messages
+5. **Security First**: Rate limiting, validation, and secure defaults
+
+---
+
+## 🔐 Authentication Flow Development
+
+### Authenticator Implementation Pattern
+```java
+public class CustomAuthenticator implements Authenticator {
+    private final PluginLogger logger;
+    
+    public CustomAuthenticator() {
+        this.logger = PluginLogger.forComponent("CustomAuthenticator");
+    }
+    
+    @Override
+    public void authenticate(AuthenticationFlowContext context) {
+        logger.info("Starting custom authentication");
+        
+        // Check if this is a direct grant flow
+        boolean isDirectGrant = isDirectGrantFlow(context);
+        if (isDirectGrant) {
+            handleDirectGrantFlow(context);
+            return;
+        }
+        
+        // Browser flow logic
+        handleBrowserFlow(context);
+    }
+    
+    @Override
+    public void action(AuthenticationFlowContext context) {
+        logger.info("Processing form submission");
+        
+        // Get form parameters
+        MultivaluedMap<String, String> formParams = context.getHttpRequest().getDecodedFormParameters();
+        String userInput = formParams.getFirst("custom_input");
+        
+        // Validate and process
+        if (validateInput(userInput)) {
+            context.success();
+        } else {
+            context.challenge(createCustomChallenge(context, "Invalid input"));
+        }
+    }
+    
+    @Override
+    public boolean requiresUser() {
+        return true;
+    }
+    
+    @Override
+    public boolean configuredFor(KeycloakSession session, RealmModel realm, UserModel user) {
+        return true;
+    }
+    
+    @Override
+    public void setRequiredActions(KeycloakSession session, RealmModel realm, UserModel user) {
+        // Set required actions if needed
+    }
+    
+    @Override
+    public void close() {
+        // Cleanup if needed
+    }
+}
+```
+
+### Direct Grant Flow Detection
+```java
+private boolean isDirectGrantFlow(AuthenticationFlowContext context) {
+    // Check if this is a direct grant flow (no web interface)
+    String grantType = context.getHttpRequest().getDecodedFormParameters().getFirst("grant_type");
+    return "password".equals(grantType) && context.getHttpRequest().getDecodedFormParameters().containsKey("custom_param");
+}
+```
+
+---
+
+## 🎨 Custom Page Creation (HTML Generation Approach)
+
+### IMPORTANT: Use Direct HTML Generation Instead of FreeMarker Templates
+
+**Why Direct HTML Generation:**
+- ✅ **No Template Dependencies**: Eliminates FreeMarker template issues
+- ✅ **Self-Contained**: Everything in the JAR file
+- ✅ **Better Control**: Full control over HTML/CSS
+- ✅ **Consistent Styling**: Embedded CSS ensures consistent appearance
+- ✅ **Easy Maintenance**: No external theme files to manage
+
+### HTML Form Generation Pattern
+
+```java
+/**
+ * Create HTML form for custom input
+ * @param actionUrl Form action URL
+ * @param context Form context data
+ * @param message Optional message
+ * @return HTML string
+ */
+private String createCustomHtmlForm(String actionUrl, Map<String, Object> context, String message) {
+    StringBuilder html = new StringBuilder();
+    
+    // HTML structure
+    html.append("<!DOCTYPE html>");
+    html.append("<html>");
+    html.append("<head>");
+    html.append("<meta charset=\"utf-8\">");
+    html.append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">");
+    html.append("<title>Custom Form</title>");
+    
+    // Embedded CSS - Modern, responsive design
+    html.append("<style>");
+    html.append("body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f5f5f5; }");
+    html.append(".container { max-width: 400px; margin: 50px auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }");
+    html.append(".header { text-align: center; margin-bottom: 30px; }");
+    html.append(".form-group { margin-bottom: 20px; }");
+    html.append("label { display: block; margin-bottom: 5px; font-weight: bold; color: #333; }");
+    html.append("input[type=\"text\"] { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 16px; box-sizing: border-box; }");
+    html.append(".btn { width: 100%; padding: 12px; background-color: #007cba; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; }");
+    html.append(".btn:hover { background-color: #005a87; }");
+    html.append(".message { padding: 10px; margin-bottom: 20px; border-radius: 4px; }");
+    html.append(".message.success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }");
+    html.append(".message.error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }");
+    html.append(".resend-link { text-align: center; margin-top: 20px; }");
+    html.append(".resend-link a { color: #007cba; text-decoration: none; }");
+    html.append(".email-display { background-color: #f8f9fa; padding: 10px; border-radius: 4px; margin-bottom: 20px; }");
+    html.append("</style>");
+    html.append("</head>");
+    
+    // Body content
+    html.append("<body>");
+    html.append("<div class=\"container\">");
+    html.append("<div class=\"header\">");
+    html.append("<h2>Custom Form</h2>");
+    html.append("<p>Please complete the form below</p>");
+    html.append("</div>");
+    
+    // Message display
+    if (message != null && !message.trim().isEmpty()) {
+        html.append("<div class=\"message info\">");
+        html.append(message);
+        html.append("</div>");
+    }
+    
+    // Context display (e.g., email)
+    if (context.containsKey("email")) {
+        html.append("<div class=\"email-display\">");
+        html.append("<strong>Email:</strong> ").append(context.get("email"));
+        html.append("</div>");
+    }
+    
+    // Form
+    html.append("<form action=\"").append(actionUrl).append("\" method=\"post\">");
+    html.append("<div class=\"form-group\">");
+    html.append("<label for=\"custom_input\">Custom Input</label>");
+    html.append("<input type=\"text\" id=\"custom_input\" name=\"custom_input\" autofocus placeholder=\"Enter your input\" maxlength=\"6\" />");
+    html.append("</div>");
+    html.append("<div class=\"form-group\">");
+    html.append("<button type=\"submit\" class=\"btn\">Submit</button>");
+    html.append("</div>");
+    html.append("</form>");
+    
+    // Resend link (if applicable)
+    html.append("<div class=\"resend-link\">");
+    html.append("<a href=\"").append(actionUrl).append("?resend=true\">Resend</a>");
+    html.append("</div>");
+    
+    html.append("</div>");
+    html.append("</body>");
+    html.append("</html>");
+    
+    return html.toString();
+}
+```
+
+### Response Generation Pattern
+
+```java
+/**
+ * Create custom challenge response
+ * @param context Authentication flow context
+ * @param message Optional message
+ * @return Response with custom HTML form
+ */
+private Response createCustomChallenge(AuthenticationFlowContext context, String message) {
+    // Generate HTML form directly instead of using FreeMarker template
+    // This avoids template dependency issues and provides better control
+    String htmlForm = createCustomHtmlForm(
+        context.getActionUrl(context.generateAccessCode()).toString(),
+        getFormContext(context),
+        message
+    );
+    
+    return Response.status(Response.Status.OK)
+        .type("text/html; charset=UTF-8")
+        .entity(htmlForm)
+        .build();
+}
+
+/**
+ * Get form context data
+ * @param context Authentication flow context
+ * @return Context map
+ */
+private Map<String, Object> getFormContext(AuthenticationFlowContext context) {
+    Map<String, Object> formContext = new HashMap<>();
+    
+    // Add user email if available
+    UserModel user = context.getUser();
+    if (user != null && user.getEmail() != null) {
+        formContext.put("email", user.getEmail());
+    }
+    
+    // Add session data if needed
+    AuthenticationSessionModel authSession = context.getAuthenticationSession();
+    if (authSession != null) {
+        String sessionData = authSession.getAuthNote("custom_data");
+        if (sessionData != null) {
+            formContext.put("sessionData", sessionData);
+        }
+    }
+    
+    return formContext;
+}
+```
+
+### Best Practices for Custom Pages
+
+1. **Responsive Design**: Use mobile-first CSS
+2. **Accessibility**: Include proper labels and ARIA attributes
+3. **Security**: Validate all inputs server-side
+4. **User Experience**: Clear messaging and intuitive flow
+5. **Consistent Styling**: Match Keycloak's design language
+6. **Error Handling**: Graceful error display
+7. **Performance**: Minimize HTML size and optimize CSS
+
+---
+
+## 🔧 Configuration Management
+
+### Configuration Class Pattern
+```java
+public class PluginConfig {
+    private final KeycloakSession session;
+    private final RealmModel realm;
+    private final Map<String, String> config;
+    
+    public PluginConfig(KeycloakSession session, RealmModel realm) {
+        this.session = session;
+        this.realm = realm;
+        this.config = realm.getAttributes();
+    }
+    
+    public boolean isEnabled() {
+        return Boolean.parseBoolean(config.getOrDefault("plugin.enabled", "true"));
+    }
+    
+    public String getExternalApiUrl() {
+        return config.get("plugin.external.api.url");
+    }
+    
+    public String getApiToken() {
+        return config.get("plugin.external.api.token");
+    }
+    
+    public int getTimeout() {
+        return Integer.parseInt(config.getOrDefault("plugin.timeout", "30"));
+    }
+    
+    public boolean isFailOpen() {
+        return Boolean.parseBoolean(config.getOrDefault("plugin.fail.open", "false"));
+    }
+}
+```
+
+### Configuration Validation
+```java
+public boolean isConfigured() {
+    return isEnabled() && 
+           getExternalApiUrl() != null && 
+           !getExternalApiUrl().trim().isEmpty();
+}
+```
+
+---
+
+## 📊 Logging & Monitoring
+
+### Structured Logging Pattern
+```java
+public class PluginLogger {
+    private static final Logger LOGGER = Logger.getLogger(PluginLogger.class);
+    private static final String LOG_PREFIX = "[PLUGIN]";
+    
+    private final String component;
+    private final KeycloakSession session;
+    private final RealmModel realm;
+    
+    public static PluginLogger forComponent(String component) {
+        return new PluginLogger(component, null, null);
+    }
+    
+    public static PluginLogger forSession(KeycloakSession session, RealmModel realm, String component) {
+        return new PluginLogger(component, session, realm);
+    }
+    
+    public void info(String message, Map<String, Object> context) {
+        LOGGER.info(createLogMessage(message, context));
+    }
+    
+    public void warn(String message, Map<String, Object> context) {
+        LOGGER.warn(createLogMessage(message, context));
+    }
+    
+    public void error(String message, Throwable throwable) {
+        LOGGER.error(createLogMessage(message), throwable);
+    }
+    
+    private String createLogMessage(String message, Map<String, Object> context) {
+        StringBuilder logMessage = new StringBuilder();
+        logMessage.append(LOG_PREFIX).append(" [").append(component).append("] ").append(message);
+        
+        if (context != null && !context.isEmpty()) {
+            logMessage.append(" | Context: {");
+            context.forEach((key, value) -> {
+                logMessage.append(key).append("=").append(value).append(", ");
+            });
+            logMessage.setLength(logMessage.length() - 2); // Remove last ", "
+            logMessage.append("}");
+        }
+        
+        return logMessage.toString();
+    }
+}
+```
+
+### Logging Sensitive Data (OTP Example)
+```java
+// ✅ CORRECT: Log OTP before sending to external API
+logger.info("Generated OTP for user", createLogContext(request, otp, otpId));
+
+// ❌ WRONG: Don't log sensitive data in production
+// logger.info("User password: " + password);
+```
+
+---
+
+## 🔌 External API Integration
+
+### HTTP Client Pattern
+```java
+public class ExternalApiService {
+    private final String apiUrl;
+    private final String apiToken;
+    private final String authType;
+    private final PluginLogger logger;
+    
+    public ExternalApiService(String apiUrl, String apiToken, String authType, PluginLogger logger) {
+        this.apiUrl = apiUrl;
+        this.apiToken = apiToken;
+        this.authType = authType;
+        this.logger = logger;
+    }
+    
+    public ApiResponse callApi(String endpoint, Object payload) {
+        try {
+            long startTime = System.currentTimeMillis();
+            
+            // Create HTTP client
+            HttpClient client = HttpClient.newHttpClient();
+            
+            // Build request
+            HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
+                .uri(URI.create(apiUrl + endpoint))
+                .header("Content-Type", "application/json");
+            
+            // Add authentication
+            if (apiToken != null && !apiToken.trim().isEmpty()) {
+                if ("bearer".equalsIgnoreCase(authType)) {
+                    requestBuilder.header("Authorization", "Bearer " + apiToken);
+                } else if ("apikey".equalsIgnoreCase(authType)) {
+                    requestBuilder.header("X-API-Key", apiToken);
+                }
+            }
+            
+            // Add payload if provided
+            if (payload != null) {
+                String jsonPayload = new ObjectMapper().writeValueAsString(payload);
+                requestBuilder.POST(HttpRequest.BodyPublishers.ofString(jsonPayload));
+            } else {
+                requestBuilder.GET();
+            }
+            
+            // Execute request
+            HttpResponse<String> response = client.send(requestBuilder.build(), 
+                HttpResponse.BodyHandlers.ofString());
+            
+            long responseTime = System.currentTimeMillis() - startTime;
+            
+            // Log API call
+            logger.logExternalApiCall(apiUrl + endpoint, 
+                response.statusCode() == 200, 
+                response.statusCode(), 
+                responseTime);
+            
+            return new ApiResponse(response.statusCode(), response.body());
+            
+        } catch (Exception e) {
+            logger.error("External API call failed", e);
+            return new ApiResponse(500, "API call failed: " + e.getMessage());
+        }
+    }
+}
+```
+
+---
+
+## 🧪 Testing & Validation
+
+### Unit Testing Pattern
+```java
+@Test
+public void testAuthenticatorFlow() {
+    // Mock dependencies
+    AuthenticationFlowContext context = mock(AuthenticationFlowContext.class);
+    KeycloakSession session = mock(KeycloakSession.class);
+    RealmModel realm = mock(RealmModel.class);
+    UserModel user = mock(UserModel.class);
+    
+    // Setup mocks
+    when(context.getSession()).thenReturn(session);
+    when(context.getRealm()).thenReturn(realm);
+    when(context.getUser()).thenReturn(user);
+    when(user.getEmail()).thenReturn("test@example.com");
+    
+    // Test authenticator
+    CustomAuthenticator authenticator = new CustomAuthenticator();
+    authenticator.authenticate(context);
+    
+    // Verify behavior
+    verify(context).challenge(any(Response.class));
+}
+```
+
+### Integration Testing
+```java
+@Test
+public void testCompleteAuthenticationFlow() {
+    // Test complete flow with real Keycloak instance
+    // Use Testcontainers or embedded Keycloak
+}
+```
+
+---
+
+## 🚀 Deployment & Packaging
+
+### Maven Configuration
+```xml
+<build>
+    <plugins>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-compiler-plugin</artifactId>
+            <version>3.11.0</version>
+            <configuration>
+                <source>11</source>
+                <target>11</target>
+            </configuration>
+        </plugin>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-shade-plugin</artifactId>
+            <version>3.4.1</version>
+            <executions>
+                <execution>
+                    <phase>package</phase>
+                    <goals>
+                        <goal>shade</goal>
+                    </goals>
+                </execution>
+            </executions>
+        </plugin>
+    </plugins>
+</build>
+```
+
+### Service Registration
+Create `src/main/resources/META-INF/services/org.keycloak.authentication.AuthenticatorFactory`:
+```
+kf.keycloak.plugin.provider.CustomAuthenticatorFactory
+```
+
+---
+
+## 🔒 Security Best Practices
+
+### Input Validation
+```java
+private boolean validateInput(String input) {
+    if (input == null || input.trim().isEmpty()) {
+        return false;
+    }
+    
+    // Add specific validation rules
+    return input.matches("^[0-9]{6}$"); // 6-digit numeric
+}
+```
+
+### Rate Limiting
+```java
+private boolean isRateLimited(String key) {
+    // Implement rate limiting logic
+    return false; // Placeholder
+}
+```
+
+### Error Handling
+```java
+private void handleError(AuthenticationFlowContext context, String error, String description) {
+    logger.warn("Authentication failed: " + error);
+    context.failure(AuthenticationFlowError.INVALID_CREDENTIALS, 
+        createErrorResponse(error, description));
+}
+```
+
+---
+
+## 📝 Documentation Requirements
+
+### Code Documentation
+- Javadoc all public classes and methods
+- Include usage examples in comments
+- Document configuration parameters
+- Explain security considerations
+
+### User Documentation
+- Installation instructions
+- Configuration guide
+- Testing procedures
+- Troubleshooting guide
+
+---
+
+## 🎯 Success Criteria
+
+A well-developed Keycloak plugin should:
+
+1. ✅ **Compile Successfully**: No compilation errors
+2. ✅ **Deploy Cleanly**: JAR file works in Keycloak
+3. ✅ **Configure Easily**: Clear configuration options
+4. ✅ **Log Comprehensively**: Structured logging for all operations
+5. ✅ **Handle Errors Gracefully**: Clear error messages and fallbacks
+6. ✅ **Perform Well**: Acceptable response times
+7. ✅ **Be Secure**: Input validation and rate limiting
+8. ✅ **Be Testable**: Comprehensive test coverage
+9. ✅ **Be Documented**: Clear documentation for users
+10. ✅ **Use Custom HTML**: Direct HTML generation instead of templates
+
+---
+
+## 🚨 Common Pitfalls to Avoid
+
+1. ❌ **FreeMarker Templates**: Use direct HTML generation instead
+2. ❌ **Hardcoded Secrets**: Use configuration for all secrets
+3. ❌ **Poor Error Handling**: Always provide meaningful error messages
+4. ❌ **Missing Logging**: Log all important operations
+5. ❌ **No Input Validation**: Always validate user inputs
+6. ❌ **Static Singletons**: Use per-session objects
+7. ❌ **Memory Leaks**: Implement proper cleanup in close() methods
+8. ❌ **Inconsistent Styling**: Use embedded CSS for consistency
+
+---
+
+## 🎉 Example: Complete OTP Plugin Pattern
+
+The OTP plugin demonstrates all these best practices:
+- ✅ Direct HTML generation (no FreeMarker)
+- ✅ Comprehensive logging (OTP values logged)
+- ✅ External API integration
+- ✅ Two-step direct grant flow
+- ✅ Browser flow support
+- ✅ Configuration-driven design
+- ✅ Error handling and fallbacks
+- ✅ Security and rate limiting
+
+This pattern should be followed for all future Keycloak plugin development.
+description:
+globs:
+alwaysApply: false
+---

@@ -69,6 +69,32 @@ public class ExternalApiService {
     }
     
     /**
+     * Send OTP to external API
+     * @param email User email
+     * @param otp Generated OTP code
+     * @param otpId OTP identifier for tracking
+     * @param userId User identifier
+     * @return ApiResponse with success status and details
+     */
+    public ApiResponse sendOtp(String email, String otp, String otpId, String userId) {
+        if (endpoint == null || endpoint.trim().isEmpty()) {
+            return ApiResponse.error("External API endpoint not configured", "CONFIG_ERROR");
+        }
+        
+        // Prepare request payload
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("email", email);
+        payload.put("otp", otp);
+        payload.put("otpId", otpId);
+        payload.put("userId", userId);
+        payload.put("timestamp", LocalDateTime.now().toString());
+        payload.put("source", "keycloak-otp-plugin");
+        
+        // Execute request with retry logic
+        return executeWithRetry(payload, 3);
+    }
+    
+    /**
      * Execute HTTP request with retry logic
      * @param payload Request payload
      * @param maxRetries Maximum retry attempts
