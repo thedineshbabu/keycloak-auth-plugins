@@ -17,6 +17,7 @@ const { errorHandler, notFoundHandler, validateRequest } = require('./middleware
 const healthRoutes = require('./routes/health');
 const eligibilityRoutes = require('./routes/eligibility');
 const otpRoutes = require('./routes/otp');
+const magiclinkRoutes = require('./routes/magiclink');
 
 // Create Express application
 const app = express();
@@ -74,6 +75,7 @@ const apiPrefix = config.apiPrefix;
 app.use(`${apiPrefix}/v1`, healthRoutes);
 app.use(`${apiPrefix}/v1`, eligibilityRoutes);
 app.use(`${apiPrefix}/v1`, otpRoutes);
+app.use(`${apiPrefix}/v1/magiclink`, magiclinkRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -88,7 +90,8 @@ app.get('/', (req, res) => {
       mfaStatus: `${apiPrefix}/v1/mfa/status`,
       otpSend: `${apiPrefix}/v1/otp/send`,
       otpValidate: `${apiPrefix}/v1/otp/validate`,
-      otpStatus: `${apiPrefix}/v1/otp/status`
+      otpStatus: `${apiPrefix}/v1/otp/status`,
+      magiclinkSend: `${apiPrefix}/v1/magiclink/send`
     },
     documentation: 'See README.md for API documentation'
   });
