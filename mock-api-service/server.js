@@ -12,12 +12,14 @@ const morgan = require('morgan');
 const config = require('./config/config');
 const logger = require('./config/logger');
 const { errorHandler, notFoundHandler, validateRequest } = require('./middleware/errorHandler');
+const { initializeDatabase, closePool } = require('./config/database');
 
 // Import routes
 const healthRoutes = require('./routes/health');
 const eligibilityRoutes = require('./routes/eligibility');
 const otpRoutes = require('./routes/otp');
 const magiclinkRoutes = require('./routes/magiclink');
+const samlRoutes = require('./routes/saml');
 
 // Create Express application
 const app = express();
@@ -76,6 +78,7 @@ app.use(`${apiPrefix}/v1`, healthRoutes);
 app.use(`${apiPrefix}/v1`, eligibilityRoutes);
 app.use(`${apiPrefix}/v1`, otpRoutes);
 app.use(`${apiPrefix}/v1/magiclink`, magiclinkRoutes);
+app.use(`${apiPrefix}/v1/saml`, samlRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -83,16 +86,18 @@ app.get('/', (req, res) => {
     service: 'Keycloak OTP Mock API Service',
     version: '1.0.0',
     description: 'Mock external API service for testing Keycloak OTP plugin',
-    endpoints: {
-      health: `${apiPrefix}/v1/health`,
-      status: `${apiPrefix}/v1/status`,
-      eligibility: `${apiPrefix}/v1/mfa/enabled`,
-      mfaStatus: `${apiPrefix}/v1/mfa/status`,
-      otpSend: `${apiPrefix}/v1/otp/send`,
-      otpValidate: `${apiPrefix}/v1/otp/validate`,
-      otpStatus: `${apiPrefix}/v1/otp/status`,
-      magiclinkSend: `${apiPrefix}/v1/magiclink/send`
-    },
+          endpoints: {
+        health: `${apiPrefix}/v1/health`,
+        status: `${apiPrefix}/v1/status`,
+        eligibility: `${apiPrefix}/v1/mfa/enabled`,
+        mfaStatus: `${apiPrefix}/v1/mfa/status`,
+        otpSend: `${apiPrefix}/v1/otp/send`,
+        otpValidate: `${apiPrefix}/v1/otp/validate`,
+        otpStatus: `${apiPrefix}/v1/otp/status`,
+        magiclinkSend: `${apiPrefix}/v1/magiclink/send`,
+        samlHealth: `${apiPrefix}/v1/saml/health`,
+        samlMetadata: `${apiPrefix}/v1/saml/metadata`
+      },
     documentation: 'See README.md for API documentation'
   });
 });
@@ -104,10 +109,17 @@ app.use(notFoundHandler);
 app.use(errorHandler);
 
 // Graceful shutdown handling
-const gracefulShutdown = (signal) => {
+const gracefulShutdown = async (signal) => {
   logger.info(`Received ${signal}. Starting graceful shutdown...`);
   
-  server.close(() => {
+  server.close(async () => {
+    try {
+      await closePool();
+      logger.info('Database pool closed');
+    } catch (error) {
+      logger.error('Error closing database pool:', error);
+    }
+    
     logger.info('HTTP server closed');
     process.exit(0);
   });
@@ -120,17 +132,26 @@ const gracefulShutdown = (signal) => {
 };
 
 // Start server
-const server = app.listen(config.port, () => {
-  logger.info(`Mock API Service started successfully`, {
-    port: config.port,
-    environment: config.nodeEnv,
-    version: '1.0.0',
-    timestamp: new Date().toISOString()
-  });
-  
-  logger.info(`Server running at http://localhost:${config.port}`);
-  logger.info(`Health check available at http://localhost:${config.port}${apiPrefix}/v1/health`);
-  logger.info(`API documentation available at http://localhost:${config.port}`);
+const server = app.listen(config.port, async () => {
+  try {
+    // Initialize database
+    await initializeDatabase();
+    
+    logger.info(`Mock API Service started successfully`, {
+      port: config.port,
+      environment: config.nodeEnv,
+      version: '1.0.0',
+      timestamp: new Date().toISOString()
+    });
+    
+    logger.info(`Server running at http://localhost:${config.port}`);
+    logger.info(`Health check available at http://localhost:${config.port}${apiPrefix}/v1/health`);
+    logger.info(`SAML metadata health check available at http://localhost:${config.port}${apiPrefix}/v1/saml/health`);
+    logger.info(`API documentation available at http://localhost:${config.port}`);
+  } catch (error) {
+    logger.error('Failed to initialize database:', error);
+    process.exit(1);
+  }
 });
 
 // Handle graceful shutdown
