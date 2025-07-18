@@ -11,8 +11,8 @@ import org.keycloak.models.KeycloakSessionFactory;
  */
 public class MagiclinkRedirectActionProviderFactory implements RequiredActionFactory {
 
-    public static final String PROVIDER_ID = "magiclink-redirect";
-    private static final String DISPLAY_TEXT = "Magiclink Redirect";
+    public static final String PROVIDER_ID = "autologin-redirect";
+    private static final String DISPLAY_TEXT = "Auto Login Redirect";
 
     @Override
     public String getId() {

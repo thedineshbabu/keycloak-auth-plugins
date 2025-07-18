@@ -13,7 +13,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Winston-style logging utility for magiclink plugin
+ * Winston-style logging utility for autologin plugin
  * Provides structured logging with different levels and context information
  */
 public class MagiclinkLogger {
@@ -43,7 +43,7 @@ public class MagiclinkLogger {
     }
     
     private static final DateTimeFormatter TIMESTAMP_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
-    private static final String LOGGER_NAME = "MagiclinkPlugin";
+    private static final String LOGGER_NAME = "AutologinPlugin";
     private static LogLevel currentLogLevel = LogLevel.INFO;
     
     private final KeycloakSession session;
@@ -193,9 +193,9 @@ public class MagiclinkLogger {
         context.put("operation", "token_generation");
         
         if (success) {
-            info("Magiclink token generated successfully", context);
+            info("Autologin token generated successfully", context);
         } else {
-            error("Failed to generate magiclink token", context);
+            error("Failed to generate autologin token", context);
         }
     }
     
@@ -218,9 +218,9 @@ public class MagiclinkLogger {
         }
         
         if (success) {
-            info("Magiclink token validated successfully", context);
+            info("Autologin token validated successfully", context);
         } else {
-            warn("Magiclink token validation failed", context);
+            warn("Autologin token validation failed", context);
         }
     }
     
@@ -262,9 +262,9 @@ public class MagiclinkLogger {
         context.put("operation", "authentication_flow");
         
         if (success) {
-            info("Magiclink authentication successful", context);
+            info("Autologin authentication successful", context);
         } else {
-            error("Magiclink authentication failed", context);
+            error("Autologin authentication failed", context);
         }
     }
     
@@ -345,7 +345,7 @@ public class MagiclinkLogger {
             
         } catch (Exception e) {
             // Fallback logging in case of errors
-            System.err.println("Error in MagiclinkLogger: " + e.getMessage());
+            System.err.println("Error in AutologinLogger: " + e.getMessage());
             System.err.println("Original message: " + message);
         }
     }

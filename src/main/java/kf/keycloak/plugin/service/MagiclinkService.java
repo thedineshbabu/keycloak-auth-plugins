@@ -15,7 +15,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Main service class that orchestrates magiclink generation and validation
+ * Main service class that orchestrates autologin generation and validation
  * Coordinates between TokenService, ExternalApiService, and configuration
  */
 public class MagiclinkService {
@@ -55,7 +55,7 @@ public class MagiclinkService {
     }
     
     /**
-     * Generate a magiclink for the specified user
+     * Generate an autologin link for the specified user
      * @param request Magiclink request
      * @return MagiclinkResponse with generation result
      */
@@ -67,10 +67,10 @@ public class MagiclinkService {
                 return MagiclinkResponse.validationError("Invalid request parameters");
             }
             
-            // Check if magiclink is enabled
+            // Check if autologin is enabled
             if (!config.isEnabled()) {
-                logger.warn("Magiclink generation attempted but feature is disabled");
-                return MagiclinkResponse.error("Magiclink feature is disabled", "FEATURE_DISABLED");
+                logger.warn("Autologin generation attempted but feature is disabled");
+                return MagiclinkResponse.error("Autologin feature is disabled", "FEATURE_DISABLED");
             }
             
             // Validate redirect URL
@@ -93,7 +93,7 @@ public class MagiclinkService {
                 return MagiclinkResponse.error("Rate limit exceeded", "RATE_LIMIT_EXCEEDED");
             }
             
-            // Generate magiclink token
+            // Generate autologin token
             String magiclink = tokenService.generateMagiclinkUrl(user, request, config.getBaseUrl());
             String tokenId = tokenService.extractTokenId(magiclink);
             
@@ -118,7 +118,7 @@ public class MagiclinkService {
                     
                     if (!apiResponse.isSuccess()) {
                         logger.error("External API call failed", createLogContext(request, apiResponse));
-                        return MagiclinkResponse.error("Failed to send magiclink", "EXTERNAL_API_ERROR");
+                        return MagiclinkResponse.error("Failed to send autologin link", "EXTERNAL_API_ERROR");
                     }
                     
                 } catch (Exception e) {
@@ -133,18 +133,18 @@ public class MagiclinkService {
             // Create success response
             MagiclinkResponse response = MagiclinkResponse.success(magiclink, tokenId, expiresAt);
             
-            logger.info("Magiclink generated successfully", createLogContext(request, response));
+            logger.info("Autologin link generated successfully", createLogContext(request, response));
             return response;
             
         } catch (Exception e) {
-            logger.error("Unexpected error generating magiclink", e);
+            logger.error("Unexpected error generating autologin link", e);
             return MagiclinkResponse.internalError(e.getMessage());
         }
     }
     
     /**
-     * Authenticate user using magiclink token
-     * @param token JWT token from magiclink
+     * Authenticate user using autologin token
+     * @param token JWT token from autologin
      * @return AuthenticationResult with user and redirect information
      */
     public AuthenticationResult authenticateWithMagiclink(String token) {
@@ -170,7 +170,7 @@ public class MagiclinkService {
     }
     
     /**
-     * Get status of a magiclink token
+     * Get status of an autologin token
      * @param token JWT token
      * @return Token status information
      */
@@ -288,7 +288,7 @@ public class MagiclinkService {
      * @return Rate limit key
      */
     private String getRateLimitKey(String email, String userId) {
-        return "magiclink:" + realm.getName() + ":" + email + ":" + userId;
+        return "autologin:" + realm.getName() + ":" + email + ":" + userId;
     }
     
     /**

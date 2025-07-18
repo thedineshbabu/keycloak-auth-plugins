@@ -17,7 +17,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * JWT token service for magiclink authentication
+ * JWT token service for autologin authentication
  * Handles token generation, validation, and lifecycle management
  */
 public class TokenService {
@@ -31,7 +31,7 @@ public class TokenService {
     private static final String CLAIM_TOKEN_TYPE = "tokenType";
     private static final String CLAIM_ONE_TIME_USE = "oneTimeUse";
     
-    private static final String TOKEN_TYPE_MAGICLINK = "magiclink";
+    private static final String TOKEN_TYPE_AUTOLOGIN = "autologin";
     
     // Cache for used tokens to prevent replay attacks
     private static final Map<String, LocalDateTime> usedTokens = new ConcurrentHashMap<>();
@@ -54,7 +54,7 @@ public class TokenService {
     }
     
     /**
-     * Generate a magiclink token for the specified user
+     * Generate an autologin token for the specified user
      * @param user User model
      * @param request Magiclink request
      * @return Generated token string
@@ -78,14 +78,14 @@ public class TokenService {
             claims.put(CLAIM_REDIRECT_URL, request.getRedirectUrl());
             claims.put(CLAIM_CLIENT_ID, request.getClientId());
             claims.put(CLAIM_REALM, realm.getName());
-            claims.put(CLAIM_TOKEN_TYPE, TOKEN_TYPE_MAGICLINK);
+            claims.put(CLAIM_TOKEN_TYPE, TOKEN_TYPE_AUTOLOGIN);
             claims.put(CLAIM_ONE_TIME_USE, true);
             
             // Generate JWT token using JJWT 0.9.1 API
             String token = Jwts.builder()
                 .setClaims(claims)
                 .setId(tokenId)
-                .setIssuer("keycloak-magiclink-" + realm.getName())
+                .setIssuer("keycloak-autologin-" + realm.getName())
                 .setSubject(user.getId())
                 .setAudience(realm.getName())
                 .setIssuedAt(new Date())
@@ -96,12 +96,12 @@ public class TokenService {
             return token;
             
         } catch (Exception e) {
-            throw new TokenGenerationException("Failed to generate magiclink token", e);
+            throw new TokenGenerationException("Failed to generate autologin token", e);
         }
     }
     
     /**
-     * Validate and parse a magiclink token
+     * Validate and parse an autologin token
      * @param token JWT token string
      * @return TokenValidationResult with validation status and claims
      */
@@ -110,7 +110,7 @@ public class TokenService {
             // Parse and validate JWT using JJWT 0.9.1 API
             Claims claims = Jwts.parser()
                 .setSigningKey(secretKey.getBytes())
-                .requireIssuer("keycloak-magiclink-" + realm.getName())
+                .requireIssuer("keycloak-autologin-" + realm.getName())
                 .requireAudience(realm.getName())
                 .parseClaimsJws(token)
                 .getBody();
@@ -119,7 +119,7 @@ public class TokenService {
             
             // Check token type
             String tokenType = (String) claims.get(CLAIM_TOKEN_TYPE);
-            if (!TOKEN_TYPE_MAGICLINK.equals(tokenType)) {
+            if (!TOKEN_TYPE_AUTOLOGIN.equals(tokenType)) {
                 return TokenValidationResult.invalid("Invalid token type");
             }
             
@@ -166,20 +166,20 @@ public class TokenService {
     }
     
     /**
-     * Generate a complete magiclink URL with token
+     * Generate a complete autologin URL with token
      * @param user User model
      * @param request Magiclink request
-     * @param baseUrl Base URL for magiclink construction
-     * @return Complete magiclink URL
+     * @param baseUrl Base URL for autologin construction
+     * @return Complete autologin URL
      */
     public String generateMagiclinkUrl(UserModel user, MagiclinkRequest request, String baseUrl) {
         try {
             // Generate token
             String token = generateMagiclinkToken(user, request);
             
-            // Build magiclink URL that goes through Keycloak authentication flow
+            // Build autologin URL that goes through Keycloak authentication flow
             // This will create a proper Keycloak session that the React app can detect
-            String clientId = request.getClientId() != null ? request.getClientId() : "magiclink-test-app";
+            String clientId = request.getClientId() != null ? request.getClientId() : "autologin-test-app";
             String redirectUri = request.getRedirectUrl() != null ? request.getRedirectUrl() : "http://localhost:3000/dashboard";
             
             String magiclinkUrl = baseUrl + "/realms/" + realm.getName() + 
@@ -193,7 +193,7 @@ public class TokenService {
             return magiclinkUrl;
             
         } catch (Exception e) {
-            throw new TokenGenerationException("Failed to generate magiclink URL", e);
+            throw new TokenGenerationException("Failed to generate autologin URL", e);
         }
     }
     
@@ -254,7 +254,7 @@ public class TokenService {
      */
     private String generateSecretKey(String realmName) {
         // Use realm name and a fixed salt to generate a consistent key
-        String baseString = "magiclink-" + realmName + "-secret-key-v1";
+        String baseString = "autologin-" + realmName + "-secret-key-v1";
         return java.util.Base64.getEncoder().encodeToString(baseString.getBytes());
     }
     

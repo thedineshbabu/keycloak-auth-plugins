@@ -223,12 +223,19 @@ public class MagiclinkConfig {
     public boolean isRedirectUrlAllowed(String redirectUrl) {
         String allowedUrls = getAllowedRedirectUrls();
         if (allowedUrls == null || allowedUrls.trim().isEmpty()) {
-            // If no restrictions configured, allow HTTPS URLs and HTTP for localhost
+            // If no restrictions configured, allow HTTPS URLs and HTTP for localhost/development
             if (redirectUrl != null) {
                 if (redirectUrl.startsWith("https://")) {
                     return true;
                 }
-                if (redirectUrl.startsWith("http://localhost") || redirectUrl.startsWith("http://127.0.0.1")) {
+                // Allow HTTP for localhost, 127.0.0.1, and common development ports
+                if (redirectUrl.startsWith("http://localhost") || 
+                    redirectUrl.startsWith("http://127.0.0.1") ||
+                    redirectUrl.startsWith("http://0.0.0.0")) {
+                    return true;
+                }
+                // Allow HTTP for development environments (ports 3000-9999)
+                if (redirectUrl.matches("^http://[^:]+:[3-9]\\d{3,4}.*")) {
                     return true;
                 }
             }
